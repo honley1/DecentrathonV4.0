@@ -67,20 +67,22 @@
 </nav>
 
 <div class='info-panel'>
-    <h3>Сгруппированные дорожные линии</h3>
-    <p>Непрерывные линии дорог с ультра-чувствительной градацией.</p>
-    <p><strong style="color: #00C851;">━</strong> <strong>Ярко-зелёный:</strong> Свободно (<0.4)</p>
-    <p><strong style="color: #7CB342;">━</strong> <strong>Светло-зелёный:</strong> Очень хорошо (0.4-0.5)</p>
-    <p><strong style="color: #8BC34A;">━</strong> <strong>Зелёный:</strong> Хорошо (0.5-0.57)</p>
-    <p><strong style="color: #CDDC39;">━</strong> <strong>Лайм:</strong> Выше 25% (0.57-0.65)</p>
-    <p><strong style="color: #FFEB3B;">━</strong> <strong>Жёлто-зелёный:</strong> Ниже медианы (0.65-0.7)</p>
-    <p><strong style="color: #FFC107;">━</strong> <strong>Жёлтый:</strong> Около медианы (0.7-0.74)</p>
-    <p><strong style="color: #FF9800;">━</strong> <strong>Жёлто-оранжевый:</strong> Выше медианы (0.74-0.8)</p>
-    <p><strong style="color: #FF5722;">━</strong> <strong>Оранжевый:</strong> Значительные заторы (0.8-0.85)</p>
-    <p><strong style="color: #F44336;">━</strong> <strong>Красно-оранжевый:</strong> Тяжёлые заторы (0.85-0.91)</p>
-    <p><strong style="color: #E53935;">━</strong> <strong>Красный:</strong> Выше 75% (0.91-0.95)</p>
-    <p><strong style="color: #C62828;">━</strong> <strong>Тёмно-красный:</strong> Экстремальные пробки (0.95+)</p>
-    <p><small>Толщина линий зависит от интенсивности трафика</small></p>
+    <h3>Плавная карта трафика</h3>
+    <p>Заполненные квадраты с ультра-плавной градацией (21 цвет).</p>
+    <p><strong style="color: #004d00;">■</strong> <strong>Очень тёмно-зелёный:</strong> Минимум (0.0)</p>
+    <p><strong style="color: #008800;">■</strong> <strong>Лесной зелёный:</strong> Низкий (0.1)</p>
+    <p><strong style="color: #00ff00;">■</strong> <strong>Ярко-зелёный:</strong> Хороший (0.25)</p>
+    <p><strong style="color: #66ff66;">■</strong> <strong>Бледно-зелёный:</strong> Умеренный (0.35)</p>
+    <p><strong style="color: #ccffcc;">■</strong> <strong>Мятный:</strong> Средний (0.45)</p>
+    <p><strong style="color: #ffff99;">■</strong> <strong>Жёлто-зелёный:</strong> Повышенный (0.5)</p>
+    <p><strong style="color: #ffff00;">■</strong> <strong>Жёлтый:</strong> Заметный (0.65)</p>
+    <p><strong style="color: #ffcc00;">■</strong> <strong>Золотой:</strong> Высокий (0.7)</p>
+    <p><strong style="color: #ff9900;">■</strong> <strong>Оранжево-жёлтый:</strong> Серьёзный (0.75)</p>
+    <p><strong style="color: #ff6600;">■</strong> <strong>Оранжевый:</strong> Тяжёлый (0.8)</p>
+    <p><strong style="color: #ff3300;">■</strong> <strong>Красно-оранжевый:</strong> Критический (0.85)</p>
+    <p><strong style="color: #ff0000;">■</strong> <strong>Красный:</strong> Пробка (0.9)</p>
+    <p><strong style="color: #990000;">■</strong> <strong>Тёмно-красный:</strong> Максимум (1.0)</p>
+    <p><small>Плавные переходы между всеми 21 цветом спектра</small></p>
 </div>
 
 <script>
@@ -108,7 +110,7 @@ map.on('load', function () {
             const gridData = new Map();
             const features = [];
 
-            // First pass: organize data by grid coordinates for proper grouping
+            // Create filled squares using exact corner coordinates from CSV
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
@@ -118,152 +120,46 @@ map.on('load', function () {
                 if (lat_min && lat_max && lng_min && lng_max && traffic_load) {
                     const load = parseFloat(traffic_load);
                     const speed = parseFloat(avg_speed);
-                    const centerLat = parseFloat(lat_center);
-                    const centerLng = parseFloat(lng_center);
+                    const latMin = parseFloat(lat_min);
+                    const latMax = parseFloat(lat_max);
+                    const lngMin = parseFloat(lng_min);
+                    const lngMax = parseFloat(lng_max);
 
-                    // Extract grid coordinates from cell_id
-                    const [row, col] = cell_id.split('_').map(n => parseInt(n));
+                    // Ultra-smooth intensity mapping for maximum color gradation
+                    // Normalize traffic_load from 0-1 range to get smooth transitions
+                    const intensity = Math.min(1.0, Math.max(0.0, load));
 
-                    // High sensitivity color mapping based on traffic_load statistics
-                    let intensity = 0;
-                    if (load >= 0.95) {
-                        intensity = 1.0; // Dark Red - Extreme jam (top 5%)
-                    } else if (load >= 0.91) {
-                        intensity = 0.9; // Red - Severe jam (75th percentile+)
-                    } else if (load >= 0.85) {
-                        intensity = 0.8; // Orange Red - Heavy jam
-                    } else if (load >= 0.80) {
-                        intensity = 0.7; // Orange - Significant jam
-                    } else if (load >= 0.74) {
-                        intensity = 0.6; // Yellow Orange - Above median
-                    } else if (load >= 0.70) {
-                        intensity = 0.5; // Yellow - Around median
-                    } else if (load >= 0.65) {
-                        intensity = 0.4; // Yellow Green - Below median
-                    } else if (load >= 0.57) {
-                        intensity = 0.3; // Light Green - Above 25th percentile
-                    } else if (load >= 0.50) {
-                        intensity = 0.2; // Green - Good flow
-                    } else if (load >= 0.40) {
-                        intensity = 0.1; // Bright Green - Very good flow
-                    } else {
-                        intensity = 0.0; // Dark Green - Free flow (below 0.4)
-                    }
+                    // Create filled polygon using corner coordinates with slight overlap
+                    const overlap = 0.000005; // Very small overlap to eliminate gaps
+                    const smoothLngMin = lngMin - overlap;
+                    const smoothLngMax = lngMax + overlap;
+                    const smoothLatMin = latMin - overlap;
+                    const smoothLatMax = latMax + overlap;
 
-                    gridData.set(`${row}_${col}`, {
-                        lat: centerLat,
-                        lng: centerLng,
-                        intensity: intensity,
-                        load: load,
-                        speed: speed,
-                        cell_id: cell_id,
-                        point_density: parseFloat(point_density) || 0,
-                        row: row,
-                        col: col
+                    features.push({
+                        type: 'Feature',
+                        properties: {
+                            intensity: intensity,
+                            traffic_load: load,
+                            avg_speed: speed,
+                            cell_id: cell_id,
+                            point_density: parseFloat(point_density) || 0
+                        },
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [[
+                                [smoothLngMin, smoothLatMin], // Bottom-left
+                                [smoothLngMax, smoothLatMin], // Bottom-right
+                                [smoothLngMax, smoothLatMax], // Top-right
+                                [smoothLngMin, smoothLatMax], // Top-left
+                                [smoothLngMin, smoothLatMin]  // Close polygon
+                            ]]
+                        }
                     });
                 }
             }
 
-            // Second pass: create continuous road line segments
-            const processedCells = new Set();
-
-            for (const [key, cell] of gridData.entries()) {
-                const { row, col, lat, lng, intensity, load, speed, cell_id, point_density } = cell;
-
-                // Create horizontal road segments (west to east)
-                if (!processedCells.has(`h_${row}_${col}`)) {
-                    const horizontalLine = [[lng, lat]];
-                    let currentCol = col;
-                    let totalIntensity = intensity;
-                    let totalLoad = load;
-                    let totalSpeed = speed;
-                    let segmentCount = 1;
-                    let cellIds = [cell_id];
-
-                    // Extend horizontally to the right
-                    while (gridData.has(`${row}_${currentCol + 1}`)) {
-                        currentCol++;
-                        const nextCell = gridData.get(`${row}_${currentCol}`);
-                        horizontalLine.push([nextCell.lng, nextCell.lat]);
-                        totalIntensity += nextCell.intensity;
-                        totalLoad += nextCell.load;
-                        totalSpeed += nextCell.speed;
-                        segmentCount++;
-                        cellIds.push(nextCell.cell_id);
-                        processedCells.add(`h_${row}_${currentCol}`);
-                    }
-
-                    // Create line segment if it has multiple points
-                    if (horizontalLine.length > 1) {
-                        features.push({
-                            type: 'Feature',
-                            properties: {
-                                intensity: totalIntensity / segmentCount,
-                                traffic_load: totalLoad / segmentCount,
-                                avg_speed: totalSpeed / segmentCount,
-                                cell_id: `horizontal_${row}_${col}-${currentCol}`,
-                                point_density: point_density,
-                                line_type: 'horizontal',
-                                segment_length: horizontalLine.length,
-                                cells_included: cellIds.join(', ')
-                            },
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: horizontalLine
-                            }
-                        });
-                    }
-                    processedCells.add(`h_${row}_${col}`);
-                }
-
-                // Create vertical road segments (north to south)
-                if (!processedCells.has(`v_${row}_${col}`)) {
-                    const verticalLine = [[lng, lat]];
-                    let currentRow = row;
-                    let totalIntensity = intensity;
-                    let totalLoad = load;
-                    let totalSpeed = speed;
-                    let segmentCount = 1;
-                    let cellIds = [cell_id];
-
-                    // Extend vertically downward
-                    while (gridData.has(`${currentRow + 1}_${col}`)) {
-                        currentRow++;
-                        const nextCell = gridData.get(`${currentRow}_${col}`);
-                        verticalLine.push([nextCell.lng, nextCell.lat]);
-                        totalIntensity += nextCell.intensity;
-                        totalLoad += nextCell.load;
-                        totalSpeed += nextCell.speed;
-                        segmentCount++;
-                        cellIds.push(nextCell.cell_id);
-                        processedCells.add(`v_${currentRow}_${col}`);
-                    }
-
-                    // Create line segment if it has multiple points
-                    if (verticalLine.length > 1) {
-                        features.push({
-                            type: 'Feature',
-                            properties: {
-                                intensity: totalIntensity / segmentCount,
-                                traffic_load: totalLoad / segmentCount,
-                                avg_speed: totalSpeed / segmentCount,
-                                cell_id: `vertical_${row}-${currentRow}_${col}`,
-                                point_density: point_density,
-                                line_type: 'vertical',
-                                segment_length: verticalLine.length,
-                                cells_included: cellIds.join(', ')
-                            },
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: verticalLine
-                            }
-                        });
-                    }
-                    processedCells.add(`v_${row}_${col}`);
-                }
-            }
-
-            console.log(`Created ${features.length} traffic squares from CSV data`);
+            console.log(`Created ${features.length} smooth filled squares with 21-color spectrum`);
 
             // Add traffic source with CSV data
             map.addSource('traffic', {
@@ -274,43 +170,43 @@ map.on('load', function () {
                 }
             });
 
-            // Add traffic layer as grouped road line segments
+            // Add traffic layer as smooth filled squares with ultra-large color spectrum
             map.addLayer({
                 'id': 'traffic',
-                'type': 'line',
+                'type': 'fill',
                 'source': 'traffic',
                 'layout': {
-                    'line-join': 'round',
-                    'line-cap': 'round',
                     'visibility': 'visible'
                 },
                 'paint': {
-                    'line-width': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        8, ['*', 1.5, ['+', 1, ['*', 0.5, ['get', 'intensity']]]],   // 1.5-3px at zoom 8
-                        12, ['*', 2, ['+', 1, ['*', 1, ['get', 'intensity']]]],      // 2-4px at zoom 12
-                        16, ['*', 3, ['+', 1, ['*', 1.5, ['get', 'intensity']]]],   // 3-7.5px at zoom 16
-                        20, ['*', 4, ['+', 1, ['*', 2, ['get', 'intensity']]]]      // 4-12px at zoom 20
-                    ],
-                    'line-color': [
+                    'fill-color': [
                         'interpolate',
                         ['linear'],
                         ['get', 'intensity'],
-                        0.0, '#00C851',    // Bright Green - Free flow (load < 0.4)
-                        0.1, '#7CB342',    // Light Green - Very good (0.4-0.5)
-                        0.2, '#8BC34A',    // Green - Good flow (0.5-0.57)
-                        0.3, '#CDDC39',    // Light Green - Above 25th percentile (0.57-0.65)
-                        0.4, '#FFEB3B',    // Yellow Green - Below median (0.65-0.7)
-                        0.5, '#FFC107',    // Yellow - Around median (0.7-0.74)
-                        0.6, '#FF9800',    // Yellow Orange - Above median (0.74-0.8)
-                        0.7, '#FF5722',    // Orange - Significant (0.8-0.85)
-                        0.8, '#F44336',    // Orange Red - Heavy (0.85-0.91)
-                        0.9, '#E53935',    // Red - Severe (0.91-0.95)
-                        1.0, '#C62828'     // Dark Red - Extreme (0.95+)
+                        0.00, '#004d00',  // Very Dark Green
+                        0.05, '#006600',  // Dark Green
+                        0.10, '#008800',  // Forest Green
+                        0.15, '#00aa00',  // Green
+                        0.20, '#00cc00',  // Bright Green
+                        0.25, '#00ff00',  // Pure Green
+                        0.30, '#33ff33',  // Light Green
+                        0.35, '#66ff66',  // Pale Green
+                        0.40, '#99ff99',  // Very Light Green
+                        0.45, '#ccffcc',  // Mint Green
+                        0.50, '#ffff99',  // Light Yellow Green
+                        0.55, '#ffff66',  // Yellow Green
+                        0.60, '#ffff33',  // Yellow
+                        0.65, '#ffff00',  // Pure Yellow
+                        0.70, '#ffcc00',  // Golden Yellow
+                        0.75, '#ff9900',  // Orange Yellow
+                        0.80, '#ff6600',  // Orange
+                        0.85, '#ff3300',  // Red Orange
+                        0.90, '#ff0000',  // Red
+                        0.95, '#cc0000',  // Dark Red
+                        1.00, '#990000'   // Very Dark Red
                     ],
-                    'line-opacity': 0.9
+                    'fill-opacity': 0.8,
+                    'fill-outline-color': 'transparent'
                 }
             });
 
@@ -446,15 +342,13 @@ map.on('click', 'traffic', function(e) {
     new mapboxgl.Popup()
         .setLngLat(coordinates)
         .setHTML(`
-            <h3>Дорожный сегмент</h3>
-            <p><strong>Сегмент:</strong> ${properties.cell_id}</p>
-            <p><strong>Тип линии:</strong> ${properties.line_type === 'horizontal' ? 'Горизонтальная' : 'Вертикальная'}</p>
-            <p><strong>Длина сегмента:</strong> ${properties.segment_length} точек</p>
-            <p><strong>Средняя загруженность:</strong> ${properties.traffic_load.toFixed(3)}</p>
+            <h3>Квадрат трафика</h3>
+            <p><strong>Ячейка:</strong> ${properties.cell_id}</p>
+            <p><strong>Загруженность:</strong> ${properties.traffic_load.toFixed(4)}</p>
             <p><strong>Средняя скорость:</strong> ${properties.avg_speed.toFixed(1)} км/ч</p>
-            <p><strong>Уровень трафика:</strong> <span style="color: ${colorCode}; font-size: 16px;">━</span> ${trafficLevel}</p>
-            <p><strong>Интенсивность:</strong> ${intensityPercent}%</p>
-            <p><strong>Включённые ячейки:</strong><br><small>${properties.cells_included}</small></p>
+            <p><strong>Плотность точек:</strong> ${properties.point_density}</p>
+            <p><strong>Цвет трафика:</strong> <span style="color: ${colorCode}; font-size: 18px;">■</span> ${trafficLevel}</p>
+            <p><strong>Интенсивность:</strong> ${intensityPercent}% (${properties.intensity.toFixed(4)})</p>
             <p><strong>Координаты:</strong><br>
             Lat: ${coordinates.lat.toFixed(6)}<br>
             Lng: ${coordinates.lng.toFixed(6)}</p>
